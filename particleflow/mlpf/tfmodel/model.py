@@ -1204,7 +1204,7 @@ class PFNetDense(tf.keras.Model):
         elif input_encoding == "clic":
             self.enc = InputEncodingCLIC(num_input_classes)
         elif input_encoding == "cocoa":
-            self.enc = InputEncodingCLIC(num_input_classes)
+        	self.enc = InputEncodingCLIC(num_input_classes)
         elif input_encoding == "default":
             self.enc = InputEncoding(num_input_classes)
 
@@ -1477,8 +1477,6 @@ class PFNetTransformer(tf.keras.Model):
         if input_encoding == "cms":
             self.enc = InputEncodingCMS(num_input_classes)
         elif input_encoding == "clic":
-            self.enc = InputEncodingCLIC(num_input_classes)
-        elif input_encoding == "cocoa":
             self.enc = InputEncodingCLIC(num_input_classes)
         elif input_encoding == "default":
             self.enc = InputEncoding(num_input_classes)

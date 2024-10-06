@@ -8,9 +8,6 @@ from pathlib import Path
 
 import numpy as np
 
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-
 try:
     import horovod.tensorflow.keras as hvd
 except ModuleNotFoundError:
@@ -176,8 +173,7 @@ def delete_all_but_best_checkpoint(train_dir, dry_run):
 
 
 def _get_num_gpus(envvar="CUDA_VISIBLE_DEVICES"):
-    #env = os.environ[envvar]
-    env = os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    env = os.environ[envvar]
     gpus = [int(x) for x in env.split(",")]
     if len(gpus) == 1 and gpus[0] == -1:
         num_gpus = 0
@@ -448,7 +444,11 @@ def load_and_interleave(
         # Note that in the latter case, all events must be smaller
         # than the pad size, otherwise, tfds will throw an error.
         padded_shapes = list(tensorflow_dataset.element_spec)
-        event_pad_size = config["train_test_datasets"][joint_dataset_name]["event_pad_size"]
+        if split == "train" or split == "test":
+        	event_pad_size = config["train_test_datasets"][joint_dataset_name]["event_pad_size"]
+        elif split == "validation":
+        	event_pad_size = config["validation_dataset"][joint_dataset_name]["event_pad_size"]
+        	
         if event_pad_size == -1:
             event_pad_size = None
         padded_shapes[0] = (event_pad_size, padded_shapes[0].shape[1])
@@ -487,8 +487,10 @@ def get_datasets(
     horovod_enabled=False,
 ):
     datasets = []
+    print(f"DEBUG: datasets_to_interleave for {split} = {datasets_to_interleave}")
     for joint_dataset_name in datasets_to_interleave.keys():
         ds_conf = datasets_to_interleave[joint_dataset_name]
+        print(f"DEBUG: ds_conf for {joint_dataset_name} = {ds_conf}")
         if ds_conf["datasets"] is None:
             logging.warning("No datasets in {} list.".format(joint_dataset_name))
         else:
@@ -761,7 +763,7 @@ def get_loss_dict(config):
 
 
 # get the datasets for training, testing and validation
-def get_train_test_val_datasets(config, num_batches_multiplier, ntrain=None, ntest=None, horovod_enabled=False):
+def get_train_test_val_datasets(config, num_batches_multiplier, ntrain=None, ntest=None, nval=None, horovod_enabled=False):
     ds_train = get_datasets(
         config["train_test_datasets"],
         config,
@@ -778,14 +780,15 @@ def get_train_test_val_datasets(config, num_batches_multiplier, ntrain=None, nte
         max_events=ntest,
         horovod_enabled=horovod_enabled,
     )
-    ds_val = mlpf_dataset_from_config(
+    ds_val = get_datasets(
         config["validation_dataset"],
         config,
-        "test",
-        max_events=config["validation_num_events"],
+        num_batches_multiplier,
+        "validation",
+        max_events=nval,
         horovod_enabled=horovod_enabled,
     )
-    ds_val.tensorflow_dataset = ds_val.tensorflow_dataset.padded_batch(config["validation_batch_size"])
+    #ds_val.tensorflow_dataset = ds_val.tensorflow_dataset.padded_batch(config["validation_batch_size"])
 
     return ds_train, ds_test, ds_val
 

@@ -52,7 +52,7 @@ setup:
   weights:
   weights_config:
   lr: 0.001
-  num_epochs: 50
+  num_epochs: 100
   dtype: float32
   trainable:
   lr_schedule: cosinedecay # cosinedecay, exponentialdecay, onecycle, none
@@ -211,28 +211,28 @@ train_test_datasets:
     event_pad_size: -1
     datasets:
       - cocoa_edmjj_clusters_pf
-
+    
 do_validation_callback: yes
-validation_dataset: cocoa_edmjj_clusters_pf
+validation_dataset:
+  physical:
+    batch_per_gpu: 100
+    event_pad_size: -1
+    datasets:
+      - cocoa_edmjj_clusters_pf
+
+validation_sets: cocoa_edmjj_clusters_pf
 validation_batch_size: 100
-validation_num_events: 2000
+validation_num_events: 3900
 
 evaluation_datasets:
   cocoa_edmjj_clusters_pf:
-    batch_size: 50
-    num_events: -1
-  cocoattbar_clusters_pf:
     batch_size: 50
     num_events: -1
 
 evaluation_jet_algo: antikt_algorithm
 
 datasets:
-  cocoa_edmjj_clusters_pf:
-    version: 1.7.0
-    data_dir:
-    manual_dir:
-  cocoattbar_clusters_pf:
+ cocoa_edmjj_clusters_pf:
     version: 1.7.0
     data_dir:
     manual_dir:

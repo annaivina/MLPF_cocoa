@@ -6,13 +6,13 @@ from utils_edm import (
     X_FEATURES_TRK,
     Y_FEATURES,
     generate_examples,
-    split_sample_valid,
+    split_sample_test,
 )
 
 import tensorflow_datasets as tfds
 
 _DESCRIPTION = """
-COCOA EDM4HEP dataset with jj with calorimeter clusters.
+COCOA EDM4HEP dataset with ttbar with calorimeter clusters.
   - X: reconstructed tracks and calorimeter clusters, variable number N per event
   - ygen: stable generator particles, zero-padded to N per event
   - ycand: baseline particle flow particles, zero-padded to N per event
@@ -25,7 +25,7 @@ Zenodo. https://doi.org/10.5281/zenodo.8260741
 """
 
 
-class CocoaEdmjjClustersPf(tfds.core.GeneratorBasedBuilder):
+class CocoattbarClustersPf(tfds.core.GeneratorBasedBuilder):
     VERSION = tfds.core.Version("1.7.0")
     RELEASE_NOTES = {
         "0.9.0": "Small stats",
@@ -44,7 +44,7 @@ class CocoaEdmjjClustersPf(tfds.core.GeneratorBasedBuilder):
 
     def __init__(self, *args, **kwargs):
         kwargs["file_format"] = tfds.core.FileFormat.ARRAY_RECORD
-        super(CocoaEdmjjClustersPf, self).__init__(*args, **kwargs)
+        super(CocoattbarClustersPf, self).__init__(*args, **kwargs)
 
     def _info(self) -> tfds.core.DatasetInfo:
         """Returns the dataset metadata."""
@@ -79,7 +79,7 @@ class CocoaEdmjjClustersPf(tfds.core.GeneratorBasedBuilder):
 
     def _split_generators(self, dl_manager: tfds.download.DownloadManager):
         path = dl_manager.manual_dir
-        return split_sample_valid(Path(path / ""))
+        return split_sample_test(Path(path / ""))
 
     def _generate_examples(self, files):
         return generate_examples(files)

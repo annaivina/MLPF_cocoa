@@ -90,6 +90,12 @@ def main():
     type=int,
 )
 @click.option(
+    "--nval",
+    default=None,
+    help="override the number of testing steps",
+    type=int,
+)
+@click.option(
     "--nepochs",
     default=None,
     help="override the number of training epochs",
@@ -162,6 +168,7 @@ def train(
     weights,
     ntrain,
     ntest,
+    nval,
     nepochs,
     recreate,
     prefix,
@@ -273,14 +280,20 @@ def train(
         with open(f"{outdir}/{jobid}.txt", "w") as f:
             f.write(f"{jobid}\n")
 
-    ds_train, ds_test, ds_val = get_train_test_val_datasets(config, num_batches_multiplier, ntrain, ntest, horovod_enabled)
-
+    ds_train, ds_test, ds_val = get_train_test_val_datasets(config, num_batches_multiplier, ntrain, ntest, nval, horovod_enabled)
+    
+    ds_val_callback = mlpf_dataset_from_config(config['validation_sets'],config,"validation",max_events=nval,horovod_enabled=horovod_enabled)
+    ds_val_callback.tensorflow_dataset = ds_val_callback.tensorflow_dataset.padded_batch(config["validation_batch_size"])
+   
     if config["dataset"]["enable_tfds_caching"]:
         ds_train.tensorflow_dataset = ds_train.tensorflow_dataset.cache()
         ds_test.tensorflow_dataset = ds_test.tensorflow_dataset.cache()
+        ds_val.tensorflow_dataset = ds_val.tensorflow_dataset.cache()
+        
 
     ds_train.tensorflow_dataset = ds_train.tensorflow_dataset.prefetch(tf.data.AUTOTUNE)
     ds_test.tensorflow_dataset = ds_test.tensorflow_dataset.prefetch(tf.data.AUTOTUNE)
+    ds_val.tensorflow_dataset = ds_val.tensorflow_dataset.prefetch(tf.data.AUTOTUNE)
 
     if config["dataset"]["enable_tfds_caching"]:
         logging.info("ensuring dataset cache is hot")
@@ -320,7 +333,7 @@ def train(
         callbacks = prepare_callbacks(
             config,
             outdir,
-            ds_val,
+            ds_val_callback,
             comet_experiment=experiment,
             horovod_enabled=horovod_enabled,
             benchmark_dir=benchmark_dir,
@@ -356,11 +369,11 @@ def train(
 
         model.fit(
             ds_train.tensorflow_dataset.repeat(),
-            validation_data=ds_test.tensorflow_dataset.repeat(),
+            validation_data=ds_val.tensorflow_dataset.repeat(),
             epochs=config["setup"]["num_epochs"],
             callbacks=callbacks,
             steps_per_epoch=ds_train.num_steps(),
-            validation_steps=ds_test.num_steps(),
+            validation_steps=ds_val.num_steps(),
             initial_epoch=initial_epoch,
             verbose=1,
         )
@@ -371,7 +384,7 @@ def train(
             callbacks = prepare_callbacks(
                 config,
                 outdir,
-                ds_val,
+                ds_val_callback,
                 comet_experiment=experiment,
                 horovod_enabled=horovod_enabled,
                 benchmark_dir=benchmark_dir,
@@ -406,11 +419,11 @@ def train(
 
             model.fit(
                 ds_train.tensorflow_dataset.repeat(),
-                validation_data=ds_test.tensorflow_dataset.repeat(),
+                validation_data=ds_val.tensorflow_dataset.repeat(),
                 epochs=config["setup"]["num_epochs"],
                 callbacks=callbacks,
                 steps_per_epoch=ds_train.num_steps(),
-                validation_steps=ds_test.num_steps(),
+                validation_steps=ds_val.num_steps(),
                 initial_epoch=initial_epoch,
                 verbose=1,
             )
@@ -439,6 +452,10 @@ def evaluate(config, train_dir, weights, customize, nevents):
         config = Path(train_dir) / "config.yaml"
         assert config.exists(), "Could not find config file in train_dir, please provide one with -c <path/to/config>"
     config, _ = parse_config(config, weights=weights)
+
+    physical_devices = tf.config.list_physical_devices("GPU")
+    for pd in physical_devices:
+        tf.config.experimental.set_memory_growth(pd, True)
 
     if customize:
         config = customization_functions[customize](config)
@@ -1321,12 +1338,11 @@ def plots(train_dir, max_files):
             history[loss].values,
             history["val_" + loss].values,
             loss + ".png",
-            margin=1,
+            margin=2,
             smoothing=True,
             cp_dir=Path(train_dir),
             title=loss,
         )
-
     for epoch_dir in sorted(os.listdir(str(eval_dir))):
         eval_epoch_dir = eval_dir / epoch_dir
         for dataset in sorted(os.listdir(str(eval_epoch_dir))):

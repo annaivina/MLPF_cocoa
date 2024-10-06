@@ -2,6 +2,7 @@ import awkward as ak
 import fastjet
 import numpy as np
 import vector
+import re
 
 jetdef = fastjet.JetDefinition(fastjet.antikt_algorithm, 0.4)
 min_jet_pt = 5.0  # GeV
@@ -49,8 +50,13 @@ Y_FEATURES = ["PDG", "charge", "pt", "eta", "sin_phi", "cos_phi", "energy", "jet
 labels = [0, 211, 130, 22, 11, 13]
 
 
-def split_sample(path, test_frac=0.8):
-    files = sorted(list(path.glob("*.parquet")))
+def extract_number(filename):
+    match = re.search(r'\d+', filename.name)
+    return int(match.group()) if match else 0
+
+
+def split_sample(path, test_frac=0.7):
+    files = sorted(list(path.glob("*.parquet")), key=extract_number)
     print("Found {} files in {}".format(len(files), path))
     assert len(files) > 0
     idx_split = int(test_frac * len(files))
@@ -73,6 +79,25 @@ def split_sample_test(path):
         "test": generate_examples(files_test)
     }
 
+def split_sample_train(path):
+    files = sorted(list(path.glob("*.parquet")))
+    print("Found {} files in {}".format(len(files), path))
+    assert len(files) > 0
+    files_train = files
+    assert len(files_train) > 0
+    return {
+        "train": generate_examples(files_train)
+    }
+
+def split_sample_valid(path):
+    files = sorted(list(path.glob("*.parquet")))
+    print("Found {} files in {}".format(len(files), path))
+    assert len(files) > 0
+    files_valid = files
+    assert len(files_valid) > 0
+    return {
+        "validation": generate_examples(files_valid)
+    }
 
 def split_sample_several(paths, test_frac=0.8):
     files_train_tot = []
@@ -107,12 +132,10 @@ def prepare_data_cocoa(fn, with_jet_idx=True):
     Xs = []
     ygens = []
     ycands = []
+    passed_event_ids = []
     
-    # Assuming file_id and event_id are arrays where each element corresponds to an event
     file_ids = ak.to_numpy(ret["file_id"])
     event_ids = ak.to_numpy(ret["event_id"])
-    
-    
     
     for iev in range(nev):
 
@@ -127,10 +150,10 @@ def prepare_data_cocoa(fn, with_jet_idx=True):
         ycand_track = ak.to_numpy(ret["ycand_track"][iev])
         ycand_cluster = ak.to_numpy(ret["ycand_cluster"][iev])
         
-      
         if len(ygen_track) == 0 or len(ygen_cluster) == 0:
             continue
-
+            
+        passed_event_ids.append(event_ids[iev])
         # pad feature dim between tracks and clusters to the same size
         if X1.shape[1] < X2.shape[1]:
             X1 = np.pad(X1, [[0, 0], [0, X2.shape[1] - X1.shape[1]]])
@@ -207,8 +230,7 @@ def prepare_data_cocoa(fn, with_jet_idx=True):
         Xs.append(X)
         ygens.append(ygen)
         ycands.append(ycand)
-       
-    return Xs, ygens, ycands,file_ids, event_ids
+    return Xs, ygens, ycands,file_ids, passed_event_ids
 
 
 def generate_examples(files, with_jet_idx=True):

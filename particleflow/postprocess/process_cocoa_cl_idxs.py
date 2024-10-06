@@ -47,6 +47,9 @@ def gen_to_features(genpart_data, iev):
             -3112: 1 , 3112:  -1, # sigma-
             -2212:  -1, 2212:  1, # proton
             -2112:  0, 2112:  0, # neutrons
+            -521:  -1,  521:  1, # B+-
+            -431:  -1,  431:  1, # D_s+-
+            -411:  -1,  411:  1, # D+-
              -321: -1 ,  321:  1, # kaon+-
              -211:  -1,  211:  1, # pi+-
              -111: 0 ,  111:  0, # pi0
@@ -246,8 +249,12 @@ def particle_to_obj_map(cell_data,topo_data,track_data,genp_features,iev):
 	for track_idx, part_idx in enumerate(track_to_parent_idx):
 		incidence_matrix[part_idx, track_idx] = 1.0
 
+
 	for topo_idx, part_idxs in enumerate(topo_particle_idx):
 		if(len(part_idxs)>0):
+			#print(topo_particle_energy[topo_idx])
+			#print(part_idx, topo_idx, ntracks, incidence_matrix.shape, topo_particle_energy.shape)
+			part_idxs = part_idxs.astype(np.int32)
 			incidence_matrix[part_idxs, topo_idx + ntracks] = topo_particle_energy[topo_idx]
 
 
@@ -434,7 +441,7 @@ def process_one_file(file_number,fn, ofn):
     print(fn)
 
     fi = uproot.open(fn)
-    arrs = fi['Out_Tree;1']
+    arrs = fi['Out_Tree;4']
     # Get all branch names
     all_branches = arrs.keys()
 
@@ -471,11 +478,11 @@ def process_one_file(file_number,fn, ofn):
     	n_clusters = len(cluster_features["energy"])
     	n_gps = len(genp_features["PDG"])
     	n_cells = len(cell_energy)
-    	
-    	if(n_tracks==0 or n_gps==0 or n_cells==0):
-    		print("number of tracks, gens or clusters is less then 1, skipping events")
-    		continue
-    
+
+    	# if(n_tracks==0 or n_gps==0 or n_cells==0):
+#     		print("number of tracks, gens or clusters is less then 1, skipping events")
+#     		continue
+
     	#map conversion between the particle and tracks and cells
     	genp_features,gp_obj_map = particle_to_obj_map(cell_data,topo_data,track_data,genp_features,iev)
     	assert len(gp_obj_map) == len(genp_features["PDG"])

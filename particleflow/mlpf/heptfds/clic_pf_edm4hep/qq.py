@@ -6,7 +6,7 @@ from utils_edm import (
     X_FEATURES_TRK,
     Y_FEATURES,
     generate_examples,
-    split_sample,
+    split_sample_test,
 )
 
 import tensorflow_datasets as tfds
@@ -64,6 +64,8 @@ class ClicEdmQqPf(tfds.core.GeneratorBasedBuilder):
                     ),
                     "ygen": tfds.features.Tensor(shape=(None, len(Y_FEATURES)), dtype=np.float32),
                     "ycand": tfds.features.Tensor(shape=(None, len(Y_FEATURES)), dtype=np.float32),
+                    "file_id": tfds.features.Tensor(shape=(), dtype=tf.int64),  # New field for file_id
+                    "event_id": tfds.features.Tensor(shape=(), dtype=np.int64),  # New field for event_id
                 }
             ),
             supervised_keys=None,
@@ -78,7 +80,7 @@ class ClicEdmQqPf(tfds.core.GeneratorBasedBuilder):
 
     def _split_generators(self, dl_manager: tfds.download.DownloadManager):
         path = dl_manager.manual_dir
-        return split_sample(Path(path / "p8_ee_qq_ecm380/"))
+        return split_sample_test(Path(path / ""))
 
     def _generate_examples(self, files):
         return generate_examples(files)
