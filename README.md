@@ -16,6 +16,19 @@ To run it on cluster use submit_parq_dijets.sh\
 CLICK samples - scripts/fcc/postprocessing.py is the main script\
 To run it on cluster use scripts/fcc/submit_click_modified.sh
 
-#Step 2 - Make parquet --> tfds files 
-COCOA samples - make_tfds.sh 
-NB: if you want to make slit samples you must specify how you want to split in mlpf/heptfds/cocoa_dijets/jj.py (
+# Step 2 - Make parquet --> tfds files 
+COCOA samples - run make_tfds.sh with correct python file mlpf/heptfds/cocoa_dijets/jj.py (for dijet sample) 
+NB: if you want to make split samples you must specify how you want to split in mlpf/heptfds/cocoa_dijets/jj.py using function from utils_ed.py split_sampletrain(test/valid)\
+The reason for this is because you need to have exactly the same events are trained in HGPFlow\
+If you dont  are about it you just use split_sample - which it will automatically split to test and train (you can also add validation there)
+
+CLICK samples - run make_tfds.sh  with correct python file click_pf_edm4hep/qq.py 
+
+# Step 3 - Run the training 
+This can be done using two main shell scripts submit_train_click.sh or submit_train_cocoa.sh\
+You just need to change the paths and the data files. \
+NB: If you have different number of the validationb events you need to specify then in parameters/cocoa.yaml or click.yaml file in the line "validation_num_events: "
+
+# Step 4 - run the predictions 
+Done using submit_eval_click.sh or submit_eval_cocoa.sh files\
+If you want to have other samples to evaluate on you need to specify them also in the parameter card like here: https://github.com/annaivina/MLPF_cocoa/blob/new_dev/particleflow/parameters/cocoa.yaml#L234\
