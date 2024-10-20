@@ -225,14 +225,42 @@ validation_batch_size: 100
 validation_num_events: 3900
 
 evaluation_datasets:
-  cocoa_edmjj_clusters_pf:
-    batch_size: 50
-    num_events: -1
+ cocoa_edmjj_clusters_pf:
+   batch_size: 50
+   num_events: -1
+ cocoattbar_clusters_pf:
+   batch_size: 50
+   num_events: -1
+ cocoa_hbb_boost_clusters_pf:
+   batch_size: 50
+   num_events: -1
+ cocoa_hbb_resolve_clusters_pf:
+   batch_size: 50
+   num_events: -1
+ cocoa_pions_clusters_pf:
+   batch_size: 50
+   num_events: -1
 
 evaluation_jet_algo: antikt_algorithm
 
 datasets:
- cocoa_edmjj_clusters_pf:
+  cocoa_edmjj_clusters_pf:
+    version: 1.7.0
+    data_dir:
+    manual_dir:
+  cocoattbar_clusters_pf:
+    version: 1.7.0
+    data_dir:
+    manual_dir:
+  cocoa_hbb_boost_clusters_pf:
+    version: 1.7.0
+    data_dir:
+    manual_dir:
+  cocoa_hbb_resolve_clusters_pf:
+    version: 1.7.0
+    data_dir:
+    manual_dir:
+  cocoa_pions_clusters_pf:
     version: 1.7.0
     data_dir:
     manual_dir:
