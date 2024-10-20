@@ -3,9 +3,10 @@
 #PBS -N mlpf_train_150k_300epoch
 #PBS -l walltime=72:00:00
 #PBS -l mem=20gb
-#PBS -l ncpus=2
+#PBS -l ncpus=1
 #PBS -l ngpus=1
 #PBS -l io=4
+#PBS -l gputype=A6000
 #PBS -o output-clic150_300epoch.log
 #PBS -e error-clic150_300epoch.log
 
