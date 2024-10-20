@@ -61,19 +61,23 @@ def create_root_file(output_path, yvals,X, event_ids, file_ids):
 
      # Define branches
     gen_pt = ROOT.std.vector('float')()
+    gen_e  = ROOT.std.vector('float')()
     gen_eta = ROOT.std.vector('float')()
     gen_phi = ROOT.std.vector('float')()
     gen_cl = ROOT.std.vector('float')()
     pred_pt = ROOT.std.vector('float')()
+    pred_e = ROOT.std.vector('float')()
     pred_eta = ROOT.std.vector('float')()
     pred_phi = ROOT.std.vector('float')()
     pred_cl = ROOT.std.vector('float')()
 
     parts.Branch('gen_pt', gen_pt)
+    parts.Branch('gen_e', gen_e)
     parts.Branch('gen_phi', gen_phi)
     parts.Branch('gen_eta', gen_eta)
     parts.Branch('gen_cl', gen_cl)
     parts.Branch('pred_pt', pred_pt)
+    parts.Branch('pred_e', pred_e)
     parts.Branch('pred_phi', pred_phi)
     parts.Branch('pred_eta', pred_eta)
     parts.Branch('pred_cl', pred_cl)
@@ -90,10 +94,12 @@ def create_root_file(output_path, yvals,X, event_ids, file_ids):
     # Loop over event
     for i in range(len(event_ids)):
     	gen_pt.clear()
+        gen_e.clear()
     	gen_eta.clear()
     	gen_phi.clear()
     	gen_cl.clear()
     	pred_pt.clear()
+        pred_e.clear()
     	pred_eta.clear()
     	pred_phi.clear()
     	pred_cl.clear()
@@ -101,8 +107,9 @@ def create_root_file(output_path, yvals,X, event_ids, file_ids):
 
     	# Fill generator-level jet properties
     	if i < len(yvals['gen_pt']):
-    		for pt, eta, phi, cl in zip(yvals['gen_pt'][i], yvals['gen_eta'][i], yvals['gen_phi'][i], yvals['gen_cls_id'][i]):
+    		for pt, e, eta, phi, cl in zip(yvals['gen_pt'][i], yvals['gen_energy'][i], yvals['gen_eta'][i], yvals['gen_phi'][i], yvals['gen_cls_id'][i]):
     			gen_pt.push_back(pt)
+                gen_e.push_back(e)
     			gen_phi.push_back(phi)
     			gen_eta.push_back(eta)
     			gen_cl.push_back(cl)
@@ -110,8 +117,9 @@ def create_root_file(output_path, yvals,X, event_ids, file_ids):
 
     	# Fill prediction-level jet properties
     	if i < len(yvals['pred_pt']):
-    		for pt, eta, phi, cl in zip(yvals['pred_pt'][i], yvals['pred_eta'][i], yvals['pred_phi'][i], yvals['pred_cls_id'][i]):
+    		for pt, e, eta, phi, cl in zip(yvals['pred_pt'][i], yvals['pred_energy'][i], yvals['pred_eta'][i], yvals['pred_phi'][i], yvals['pred_cls_id'][i]):
     			pred_pt.push_back(pt)
+                pred_e.push_back(e)
     			pred_phi.push_back(phi)
     			pred_eta.push_back(eta)
     			pred_cl.push_back(cl)
