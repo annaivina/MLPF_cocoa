@@ -52,7 +52,7 @@ setup:
   weights:
   weights_config:
   lr: 0.001
-  num_epochs: 150
+  num_epochs: 300
   dtype: float32
   trainable:
   lr_schedule: cosinedecay # cosinedecay, exponentialdecay, onecycle, none
@@ -213,9 +213,16 @@ train_test_datasets:
       - clic_edm_qq_pf
 
 do_validation_callback: yes
-validation_dataset: clic_edm_qq_pf
+validation_dataset:
+  physical:
+    batch_per_gpu: 100
+    event_pad_size: -1
+    datasets:
+      - clic_edm_qq_pf
+
+validation_sets: clic_edm_qq_pf
 validation_batch_size: 100
-validation_num_events: 2000
+validation_num_events: 5000
 
 evaluation_datasets:
   clic_edm_qq_pf:

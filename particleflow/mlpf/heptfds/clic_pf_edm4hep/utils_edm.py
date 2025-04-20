@@ -64,6 +64,16 @@ def split_sample(path, test_frac=0.8):
     }
 
 
+def split_sample_test(path):
+    files = sorted(list(path.glob("*.parquet")))
+    print("Found {} files in {}".format(len(files), path))
+    assert len(files) > 0
+    files_test = files
+    assert len(files_test) > 0
+    return {
+        "test": generate_examples(files_test)
+    }
+
 def split_sample_several(paths, test_frac=0.8):
     files_train_tot = []
     files_test_tot = []
@@ -97,6 +107,11 @@ def prepare_data_clic(fn, with_jet_idx=True):
     Xs = []
     ygens = []
     ycands = []
+    passed_event_ids = []
+    
+    event_ids = ak.to_numpy(ret["event_id"])
+    file_ids = ak.to_numpy(ret["file_id"])
+    
     for iev in range(nev):
 
         X1 = ak.to_numpy(X_track[iev])
@@ -112,7 +127,8 @@ def prepare_data_clic(fn, with_jet_idx=True):
 
         if len(ygen_track) == 0 or len(ygen_cluster) == 0:
             continue
-
+            
+        passed_event_ids.append(event_ids[iev])
         # pad feature dim between tracks and clusters to the same size
         if X1.shape[1] < X2.shape[1]:
             X1 = np.pad(X1, [[0, 0], [0, X2.shape[1] - X1.shape[1]]])
@@ -189,17 +205,19 @@ def prepare_data_clic(fn, with_jet_idx=True):
         Xs.append(X)
         ygens.append(ygen)
         ycands.append(ycand)
-    return Xs, ygens, ycands
+    return Xs, ygens, ycands, file_ids, passed_event_ids
 
 
 def generate_examples(files, with_jet_idx=True):
     for fi in files:
-        Xs, ygens, ycands = prepare_data_clic(fi, with_jet_idx=with_jet_idx)
+        Xs, ygens, ycands, file_ids, event_ids = prepare_data_clic(fi, with_jet_idx=with_jet_idx)
         for iev in range(len(Xs)):
             yield str(fi) + "_" + str(iev), {
                 "X": Xs[iev].astype(np.float32),
                 "ygen": ygens[iev],
                 "ycand": ycands[iev],
+                "file_id": file_ids[iev],
+                "event_id": event_ids[iev],
             }
 
 

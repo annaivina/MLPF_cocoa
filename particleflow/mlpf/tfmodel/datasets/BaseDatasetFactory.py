@@ -77,7 +77,8 @@ def mlpf_dataset_from_config(dataset_name, full_config, split, max_events=None, 
 
     def yield_from_ds():
         for elem in dss:
-            yield {"X": elem["X"], "ygen": elem["ygen"], "ycand": elem["ycand"], "file_id": elem['file_id'],"event_id": elem['event_id'] }
+            yield {"X": elem["X"], "ygen": elem["ygen"], "ycand": elem["ycand"], "file_id": elem['file_id'],"event_id": elem['event_id']}
+            #yield {"X": elem["X"], "ygen": elem["ygen"], "ycand": elem["ycand"], "event_id": elem['event_id']}
 
     # def get_from_ds(i):
     #    elem = dss[i]
@@ -91,26 +92,23 @@ def mlpf_dataset_from_config(dataset_name, full_config, split, max_events=None, 
     # hack to prevent a warning from tfds about accessing sequences of indices
     dss.__class__.__getitems__ = my_getitem
 
-
-    #output_signature = {k: tf.TensorSpec(shape=(None, v.shape[1])) for (k, v) in dss.dataset_info.features.items()}
     
-    #Change to include the ids 
-    # Define output_signature accounting for the shapes of each feature
-    output_signature = {}
-    for k, v in dss.dataset_info.features.items():
-        if k in ['file_id', 'event_id']:
-            # Scalar features (assuming they are int64, adjust dtype if needed)
-            output_signature[k] = tf.TensorSpec(shape=(), dtype=tf.int64)
-        else:
-            # Non-scalar features
-            output_signature[k] = tf.TensorSpec(shape=(None, v.shape[1]), dtype=v.dtype)
-
-    tf_dataset = tf.data.Dataset.from_generator(yield_from_ds, output_signature=output_signature)
+    #output_signature = {k: tf.TensorSpec(shape=(None, v.shape[1])) for (k, v) in dss.dataset_info.features.items()}
 
     # Note 2023-09-09
     # from_generator uses tf.numpy_function, which creates issues with parallelization.
     # This means that in an IO-bound loop over the dataset, the performance will be somewhat limited
     # using range().map(get_from_ds) would be better, but currently the internals of array_record do not support jit.
+    output_signature = {}
+    for k, v in dss.dataset_info.features.items():
+    	if k in ['file_id','event_id']:
+    	#if k in ['event_id']:
+    		# Scalar features (assuming they are int64, adjust dtype if needed)
+    		output_signature[k] = tf.TensorSpec(shape=(), dtype=tf.int64)
+    	else:
+    		# Non-scalar features
+    		output_signature[k] = tf.TensorSpec(shape=(None, v.shape[1]), dtype=v.dtype)
+            
     tf_dataset = tf.data.Dataset.from_generator(yield_from_ds, output_signature=output_signature)
     # tf_dataset = tf.data.Dataset.range(len(dss)).map(get_from_ds, num_parallel_calls=tf.data.AUTOTUNE)
 

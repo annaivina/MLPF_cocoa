@@ -6,7 +6,7 @@ from utils_edm import (
     X_FEATURES_TRK,
     Y_FEATURES,
     generate_examples,
-    split_sample,
+    split_sample_valid,
 )
 
 import tensorflow_datasets as tfds
@@ -79,7 +79,7 @@ class CocoaEdmjjClustersPf(tfds.core.GeneratorBasedBuilder):
 
     def _split_generators(self, dl_manager: tfds.download.DownloadManager):
         path = dl_manager.manual_dir
-        return split_sample(Path(path / ""))
+        return split_sample_valid(Path(path / ""))
 
     def _generate_examples(self, files):
         return generate_examples(files)

@@ -221,7 +221,7 @@ def get_checkpoint_history_callback(outdir, config, dataset, comet_experiment, h
         history_path = str(history_path)
         cb = CustomCallback(
             history_path,
-            dataset.tensorflow_dataset.take(config["validation_num_events"]),
+            dataset.tensorflow_dataset,
             config,
             plot_freq=config["callbacks"]["plot_freq"],
             horovod_enabled=horovod_enabled,
@@ -364,7 +364,7 @@ def eval_model(
         raise KeyError("Unknown evaluation_jet_algo: {}".format(config["evaluation_jet_algo"]))
 
     for elem in tqdm(dataset, desc="Evaluating model"):
-
+        
         if verbose:
             print("evaluating model")
         ypred = model.predict(elem["X"], verbose=verbose)
@@ -373,29 +373,31 @@ def eval_model(
         if verbose:
             print("unpacking outputs")
 
-        ygen = unpack_target(elem["ygen"], config["dataset"]["num_output_classes"], config)
-        #ycand = unpack_target(elem["ycand"], config["dataset"]["num_output_classes"], config)
+        ygen = [unpack_target(x, config["dataset"]["num_output_classes"], config) for x in elem["ygen"]]
+        ycand = [unpack_target(x, config["dataset"]["num_output_classes"], config) for x in elem["ycand"]]
+        ygen = {k: tf.stack([x[k] for x in ygen]) for k in ygen[0].keys()}
+        ycand = {k: tf.stack([x[k] for x in ycand]) for k in ycand[0].keys()}
+
         # 0, 1, 2 -> -1, 0, 1
         ygen["charge"] = tf.expand_dims(tf.math.argmax(ygen["charge"], axis=-1), axis=-1) - 1
-        #ycand["charge"] = tf.expand_dims(tf.math.argmax(ycand["charge"], axis=-1), axis=-1) - 1
+        ycand["charge"] = tf.expand_dims(tf.math.argmax(ycand["charge"], axis=-1), axis=-1) - 1
 
         ygen["cls_id"] = tf.math.argmax(ygen["cls"], axis=-1)
-        #ycand["cls_id"] = tf.math.argmax(ycand["cls"], axis=-1)
+        ycand["cls_id"] = tf.math.argmax(ycand["cls"], axis=-1)
         ypred["cls_id"] = tf.math.argmax(ypred["cls"], axis=-1).numpy()
 
         keys_particle = [k for k in ypred.keys() if k != "met"]
         
-        file_id = elem["file_id"].numpy()  # Assuming file_id and event_id are stored as tensors
         event_id = elem["event_id"].numpy()
-
+        file_id = elem["file_id"].numpy()  # Assuming file_id and event_id are stored as tensors
         X = awkward.Array(elem["X"].numpy())
         ygen = awkward.Array({k: squeeze_if_one(ygen[k].numpy()) for k in keys_particle})
-        #ycand = awkward.Array({k: squeeze_if_one(ycand[k].numpy()) for k in keys_particle})
+        ycand = awkward.Array({k: squeeze_if_one(ycand[k].numpy()) for k in keys_particle})
         ypred = awkward.Array({k: squeeze_if_one(ypred[k]) for k in keys_particle})
 
         awkvals = {
             "gen": ygen,
-            #"cand": ycand,
+            "cand": ycand,
             "pred": ypred,
         }
 
@@ -403,8 +405,7 @@ def eval_model(
         if verbose:
             print("clustering jets")
 
-        #for typ in ["gen", "cand", "pred"]:
-        for typ in ["gen", "pred"]:
+        for typ in ["gen", "cand", "pred"]:
             phi = np.arctan2(awkvals[typ]["sin_phi"], awkvals[typ]["cos_phi"])
 
             cls_id = awkward.argmax(awkvals[typ]["cls"], axis=-1, mask_identity=False)
@@ -439,10 +440,9 @@ def eval_model(
 
         # DeltaR match between genjets and MLPF jets
         gen_to_pred = match_two_jet_collections(jets_coll, "gen", "pred", jet_match_dr)
-        #gen_to_cand = match_two_jet_collections(jets_coll, "gen", "cand", jet_match_dr)
+        gen_to_cand = match_two_jet_collections(jets_coll, "gen", "cand", jet_match_dr)
 
-        #matched_jets = awkward.Array({"gen_to_pred": gen_to_pred, "gen_to_cand": gen_to_cand})
-        matched_jets = awkward.Array({"gen_to_pred": gen_to_pred})
+        matched_jets = awkward.Array({"gen_to_pred": gen_to_pred, "gen_to_cand": gen_to_cand})
 
         # Save output file
         outfile = "{}/pred_batch{}.parquet".format(outdir, ibatch)
@@ -464,6 +464,17 @@ def eval_model(
         )
 
         ibatch += 1
+
+# https://stackoverflow.com/a/59571639
+def get_nvidia_mem():
+    import subprocess as sp
+
+    command = "nvidia-smi --query-gpu=memory.used --format=csv"
+    memory_used_info = sp.check_output(command.split()).decode("ascii").split("\n")[1:-1]
+    memory_used_values = [int(x.split()[0]) for i, x in enumerate(memory_used_info)]
+    # idevs = [int(x) for x in os.environ["CUDA_VISIBLE_DEVICES"].split(",")]
+    # return [memory_used_values[d] for d in idevs]
+    return memory_used_values
 
 
 def freeze_model(model, config, outdir):
@@ -488,11 +499,11 @@ def freeze_model(model, config, outdir):
 
     if "combined_graph_layer" in config["parameters"]:
         bin_size = config["parameters"]["combined_graph_layer"]["bin_size"]
-        elem_range = list(range(bin_size, 5 * bin_size, bin_size))
+        elem_range = list(range(bin_size, 40 * bin_size, bin_size))
     else:
         elem_range = range(100, 1000, 200)
 
-    for ibatch in [1, 2, 4]:
+    for ibatch in [1, 2, 4, 8, 16]:
         for nptcl in elem_range:
             X = np.random.rand(ibatch, nptcl, nfeat)
             full_model(X)
@@ -502,7 +513,8 @@ def freeze_model(model, config, outdir):
                 full_model(X)
             t1 = time.time()
 
-            print(ibatch, nptcl, (t1 - t0) / niter)
+            mem = get_nvidia_mem()
+            print(ibatch, nptcl, (t1 - t0) / niter, mem)
 
     # we need to use opset 12 for the version of ONNXRuntime in CMSSW
     # the warnings "RuntimeError: Opset (12) must be >= 13 for operator 'batch_dot'." do not seem to be critical
